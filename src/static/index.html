@@ -6,93 +6,330 @@
     <title>R2 图床控制台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+      :root {
+        --color-bg: #fef6e4;
+        --color-headline: #001858;
+        --color-paragraph: #172c66;
+        --color-button: #f582ae;
+        --color-button-text: #001858;
+        --color-stroke: #001858;
+        --color-main: #f3d2c1;
+        --color-highlight: #fef6e4;
+        --color-secondary: #8bd3dd;
+        --color-tertiary: #f582ae;
+      }
+
       html,
       body {
         height: 100%;
-        background: #0f172a;
-        color: #f8fafc;
+        background: linear-gradient(135deg, #fef6e4 0%, #f3d2c1 100%);
+        color: var(--color-paragraph);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+
+      .gradient-bg {
+        background: linear-gradient(135deg, rgba(254, 246, 228, 0.95) 0%, rgba(243, 210, 193, 0.95) 100%);
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        border: 2px solid rgba(0, 24, 88, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px -10px rgba(0, 24, 88, 0.15);
+        border-color: rgba(139, 211, 221, 0.5);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #f582ae 0%, #f89dc4 100%);
+        color: var(--color-button-text);
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(245, 130, 174, 0.3);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(245, 130, 174, 0.4);
+      }
+
+      .btn-secondary {
+        background: linear-gradient(135deg, #8bd3dd 0%, #a5dde5 100%);
+        color: var(--color-button-text);
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .btn-secondary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(139, 211, 221, 0.4);
+      }
+
+      .btn-danger {
+        background: linear-gradient(135deg, #ff6b9d 0%, #ff8fb5 100%);
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .btn-danger:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(255, 107, 157, 0.4);
+      }
+
+      .dropzone {
+        border: 3px dashed rgba(139, 211, 221, 0.5);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(243, 210, 193, 0.3) 100%);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .dropzone::before {
+        content: '📤';
+        position: absolute;
+        font-size: 64px;
+        opacity: 0.1;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
+
+      .dropzone:hover {
+        border-color: rgba(245, 130, 174, 0.6);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(243, 210, 193, 0.5) 100%);
+        transform: scale(1.01);
       }
 
       .dropzone-active {
-        border-color: #38bdf8;
-        background: rgba(56, 189, 248, 0.1);
+        border-color: var(--color-button);
+        background: linear-gradient(135deg, rgba(245, 130, 174, 0.2) 0%, rgba(139, 211, 221, 0.2) 100%);
+        transform: scale(1.02);
+      }
+
+      .stat-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(243, 210, 193, 0.6) 100%);
+        border: 2px solid rgba(139, 211, 221, 0.3);
+        transition: all 0.3s ease;
+      }
+
+      .stat-card:hover {
+        border-color: rgba(245, 130, 174, 0.5);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 24, 88, 0.1);
+      }
+
+      .file-card {
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid rgba(139, 211, 221, 0.2);
+        transition: all 0.3s ease;
+        overflow: hidden;
+      }
+
+      .file-card:hover {
+        border-color: rgba(245, 130, 174, 0.4);
+        transform: translateY(-4px);
+        box-shadow: 0 16px 32px rgba(0, 24, 88, 0.15);
+      }
+
+      .file-thumbnail {
+        background: linear-gradient(135deg, #f3d2c1 0%, #fef6e4 100%);
+        transition: transform 0.3s ease;
+      }
+
+      .file-card:hover .file-thumbnail {
+        transform: scale(1.05);
+      }
+
+      .progress-bar {
+        background: linear-gradient(90deg, #f582ae 0%, #8bd3dd 100%);
+        height: 8px;
+        border-radius: 999px;
+        transition: width 0.3s ease;
+        box-shadow: 0 2px 8px rgba(245, 130, 174, 0.3);
+      }
+
+      .badge {
+        background: linear-gradient(135deg, #8bd3dd 0%, #a5dde5 100%);
+        color: var(--color-headline);
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(139, 211, 221, 0.3);
+      }
+
+      input[type="text"],
+      input[type="password"],
+      input[type="search"] {
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid rgba(139, 211, 221, 0.3);
+        color: var(--color-paragraph);
+        transition: all 0.3s ease;
+      }
+
+      input[type="text"]:focus,
+      input[type="password"]:focus,
+      input[type="search"]:focus {
+        outline: none;
+        border-color: var(--color-button);
+        box-shadow: 0 0 0 3px rgba(245, 130, 174, 0.1);
+      }
+
+      .nav-btn {
+        position: relative;
+        transition: all 0.3s ease;
+        color: var(--color-paragraph);
+      }
+
+      .nav-btn:hover {
+        color: var(--color-button);
+      }
+
+      .nav-btn.active {
+        color: var(--color-button);
+        font-weight: 600;
+      }
+
+      .nav-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #f582ae 0%, #8bd3dd 100%);
+        border-radius: 999px;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-in {
+        animation: slideIn 0.4s ease-out;
+      }
+
+      .toast {
+        background: linear-gradient(135deg, rgba(0, 24, 88, 0.95) 0%, rgba(23, 44, 102, 0.95) 100%);
+        color: white;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 24, 88, 0.3);
+      }
+
+      .header {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        border-bottom: 2px solid rgba(139, 211, 221, 0.3);
+      }
+
+      .icon-upload {
+        font-size: 48px;
+        animation: float 3s ease-in-out infinite;
+      }
+
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
       }
     </style>
   </head>
   <body class="min-h-full">
     <div class="min-h-full flex flex-col">
-      <header class="border-b border-slate-700 bg-slate-900/70 backdrop-blur">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header class="header">
+        <div class="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="text-2xl font-semibold text-sky-400">R2 Image Host</span>
-            <span class="text-sm text-slate-400 hidden md:block">Cloudflare Workers + R2 图床控制台</span>
+            <span class="text-2xl font-bold" style="color: var(--color-headline);">📸 R2 Image Host</span>
+            <span class="text-sm hidden md:block" style="color: var(--color-paragraph);">极简图床控制台</span>
           </div>
-          <nav class="flex items-center gap-2" id="main-nav" hidden>
-            <button data-section="upload" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">上传</button>
-            <button data-section="files" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">文件管理</button>
-            <button data-section="history" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">历史直链</button>
-            <button data-section="settings" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">设置</button>
+          <nav class="flex items-center gap-1" id="main-nav" hidden>
+            <button data-section="upload" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">上传</button>
+            <button data-section="files" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">文件管理</button>
+            <button data-section="history" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">历史直链</button>
+            <button data-section="settings" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium">设置</button>
           </nav>
-          <button id="logout-btn" class="hidden text-sm text-slate-400 hover:text-red-400">退出</button>
+          <button id="logout-btn" class="hidden text-sm font-medium hover:opacity-70 transition-opacity" style="color: var(--color-button);">退出登录</button>
         </div>
       </header>
 
       <main class="flex-1">
-        <section id="login-section" class="max-w-md mx-auto mt-24 bg-slate-900/70 border border-slate-700 rounded-2xl p-8 shadow-xl">
-          <h2 class="text-xl font-semibold mb-6 text-center">登录</h2>
-          <label class="block text-sm font-medium text-slate-300 mb-2" for="password">访问密码</label>
-          <input id="password" type="password" class="w-full px-4 py-3 rounded-lg bg-slate-800/80 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="请输入密码" />
-          <button id="login-btn" class="mt-6 w-full py-3 rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-medium">登录</button>
-          <p id="login-error" class="mt-4 text-sm text-red-400 hidden">密码错误，请重试。</p>
+        <section id="login-section" class="max-w-md mx-auto mt-24 card rounded-3xl p-10 shadow-2xl animate-in">
+          <div class="text-center mb-8">
+            <div class="text-5xl mb-4">🔐</div>
+            <h2 class="text-2xl font-bold mb-2" style="color: var(--color-headline);">欢迎回来</h2>
+            <p class="text-sm" style="color: var(--color-paragraph);">请输入访问密码以继续</p>
+          </div>
+          <label class="block text-sm font-semibold mb-2" style="color: var(--color-paragraph);" for="password">访问密码</label>
+          <input id="password" type="password" class="w-full px-4 py-3 rounded-xl" placeholder="请输入密码" />
+          <button id="login-btn" class="mt-6 w-full py-3 rounded-xl btn-primary">登录</button>
+          <p id="login-error" class="mt-4 text-sm font-medium hidden" style="color: #ff6b9d;">密码错误，请重试。</p>
         </section>
 
         <section id="app-section" class="hidden">
-          <div class="max-w-6xl mx-auto px-4 py-10 space-y-10">
+          <div class="max-w-6xl mx-auto px-4 py-10 space-y-8">
             <div id="upload-view" class="app-view space-y-6">
-              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6">
-                <h3 class="text-lg font-semibold flex items-center gap-2 mb-4">
-                  <span class="w-2 h-2 rounded-full bg-sky-400"></span> 上传图片
-                </h3>
-                <div id="drop-zone" class="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center transition">
-                  <p class="text-slate-300 mb-4">拖拽图片到这里或点击选择</p>
-                  <label class="inline-flex items-center gap-3 px-4 py-2 bg-slate-800 rounded-lg cursor-pointer hover:bg-slate-700">
-                    <span class="text-sm">选择文件</span>
+              <div class="card rounded-3xl p-8 animate-in">
+                <div class="flex items-center gap-3 mb-6">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-2xl" style="background: linear-gradient(135deg, #f582ae 0%, #8bd3dd 100%);">📤</div>
+                  <h3 class="text-xl font-bold" style="color: var(--color-headline);">上传图片</h3>
+                </div>
+                <div id="drop-zone" class="dropzone rounded-2xl p-16 text-center cursor-pointer">
+                  <div class="icon-upload">📁</div>
+                  <p class="text-lg font-semibold mt-4 mb-2" style="color: var(--color-headline);">拖拽图片到这里</p>
+                  <p class="text-sm mb-6" style="color: var(--color-paragraph);">或点击选择文件上传</p>
+                  <label class="inline-flex items-center gap-2 px-6 py-3 btn-primary rounded-xl cursor-pointer">
+                    <span>选择文件</span>
                     <input id="file-input" type="file" accept="image/*" multiple class="hidden" />
                   </label>
-                  <p class="mt-2 text-xs text-slate-500">支持 JPEG/PNG/GIF/WebP/SVG，单文件 ≤ 10MB</p>
+                  <p class="mt-4 text-xs" style="color: var(--color-paragraph); opacity: 0.7;">支持 JPEG/PNG/GIF/WebP/SVG · 单文件 ≤ 10MB</p>
                 </div>
 
-                <div id="upload-progress" class="hidden mt-6">
-                  <div class="flex items-center justify-between text-sm text-slate-300">
+                <div id="upload-progress" class="hidden mt-8">
+                  <div class="flex items-center justify-between text-sm font-semibold mb-3" style="color: var(--color-paragraph);">
                     <span>上传中...</span>
                     <span id="progress-text">0%</span>
                   </div>
-                  <div class="w-full h-2 bg-slate-800 rounded-full mt-2">
-                    <div id="progress-bar" class="h-full bg-sky-400 rounded-full" style="width: 0%"></div>
+                  <div class="w-full h-3 rounded-full" style="background: rgba(139, 211, 221, 0.2);">
+                    <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
                   </div>
                 </div>
 
-                <div id="upload-result" class="hidden mt-6 bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+                <div id="upload-result" class="hidden mt-8 card rounded-2xl p-6 space-y-4 animate-in">
                   <div class="flex items-center justify-between">
-                    <div>
-                      <p class="text-sm text-slate-400">上传成功</p>
-                      <p id="result-key" class="text-base font-medium text-slate-100"></p>
+                    <div class="flex items-center gap-2">
+                      <span class="text-2xl">✅</span>
+                      <div>
+                        <p class="text-sm font-semibold" style="color: var(--color-button);">上传成功</p>
+                        <p id="result-key" class="text-sm font-medium" style="color: var(--color-paragraph);"></p>
+                      </div>
                     </div>
-                    <button id="result-close" class="text-slate-500 hover:text-slate-300">×</button>
+                    <button id="result-close" class="text-2xl hover:opacity-70 transition-opacity" style="color: var(--color-paragraph);">×</button>
                   </div>
-                  <img id="result-preview" src="" alt="预览" class="w-full max-h-64 object-cover rounded-lg border border-slate-700" />
-                  <div class="grid gap-2">
+                  <img id="result-preview" src="" alt="预览" class="w-full max-h-80 object-cover rounded-xl" style="border: 2px solid rgba(139, 211, 221, 0.3);" />
+                  <div class="grid gap-3">
                     <div class="flex gap-2">
-                      <input id="link-direct" readonly class="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs" />
-                      <button data-target="link-direct" class="copy-btn px-3 py-2 bg-slate-700 rounded-lg text-xs">复制直链</button>
+                      <input id="link-direct" readonly class="flex-1 px-4 py-3 rounded-xl text-sm" style="background: rgba(255, 255, 255, 0.6); border: 2px solid rgba(139, 211, 221, 0.2);" />
+                      <button data-target="link-direct" class="copy-btn px-5 py-3 btn-secondary rounded-xl text-sm whitespace-nowrap">复制直链</button>
                     </div>
                     <div class="flex gap-2">
-                      <input id="link-markdown" readonly class="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs" />
-                      <button data-target="link-markdown" class="copy-btn px-3 py-2 bg-slate-700 rounded-lg text-xs">复制 Markdown</button>
+                      <input id="link-markdown" readonly class="flex-1 px-4 py-3 rounded-xl text-sm" style="background: rgba(255, 255, 255, 0.6); border: 2px solid rgba(139, 211, 221, 0.2);" />
+                      <button data-target="link-markdown" class="copy-btn px-5 py-3 btn-secondary rounded-xl text-sm whitespace-nowrap">Markdown</button>
                     </div>
                     <div class="flex gap-2">
-                      <input id="link-html" readonly class="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs" />
-                      <button data-target="link-html" class="copy-btn px-3 py-2 bg-slate-700 rounded-lg text-xs">复制 HTML</button>
+                      <input id="link-html" readonly class="flex-1 px-4 py-3 rounded-xl text-sm" style="background: rgba(255, 255, 255, 0.6); border: 2px solid rgba(139, 211, 221, 0.2);" />
+                      <button data-target="link-html" class="copy-btn px-5 py-3 btn-secondary rounded-xl text-sm whitespace-nowrap">HTML</button>
                     </div>
                   </div>
                 </div>
@@ -100,51 +337,57 @@
             </div>
 
             <div id="files-view" class="app-view hidden space-y-6">
-              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6 space-y-6">
-                <div class="flex flex-wrap items-center gap-3 justify-between">
-                  <div class="text-sm text-slate-400" id="breadcrumb"></div>
+              <div class="card rounded-3xl p-8 animate-in">
+                <div class="flex items-center gap-3 mb-6">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-2xl" style="background: linear-gradient(135deg, #8bd3dd 0%, #a5dde5 100%);">📁</div>
+                  <h3 class="text-xl font-bold" style="color: var(--color-headline);">文件管理</h3>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 justify-between mb-6">
+                  <div class="text-sm font-medium" id="breadcrumb" style="color: var(--color-paragraph);"></div>
                   <div class="flex flex-wrap gap-2">
-                    <button id="btn-refresh" class="px-3 py-2 rounded-lg bg-slate-800 text-sm hover:bg-slate-700">刷新</button>
-                    <button id="btn-create-folder" class="px-3 py-2 rounded-lg bg-sky-500/80 hover:bg-sky-400 text-sm">新建文件夹</button>
-                    <button id="btn-delete-selected" class="px-3 py-2 rounded-lg bg-rose-500/80 hover:bg-rose-400 text-sm">删除选中</button>
+                    <button id="btn-refresh" class="px-4 py-2 rounded-xl btn-secondary text-sm">🔄 刷新</button>
+                    <button id="btn-create-folder" class="px-4 py-2 rounded-xl btn-primary text-sm">➕ 新建文件夹</button>
+                    <button id="btn-delete-selected" class="px-4 py-2 rounded-xl btn-danger text-sm">🗑️ 删除选中</button>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-3">
-                  <input id="search-input" type="search" placeholder="搜索文件" class="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
-                  <span class="text-xs text-slate-500" id="files-meta"></span>
+                <div class="flex items-center gap-3 mb-6">
+                  <input id="search-input" type="search" placeholder="🔍 搜索文件名..." class="flex-1 px-4 py-3 rounded-xl text-sm" />
+                  <span class="badge" id="files-meta"></span>
                 </div>
 
-                <div id="folders-container" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
-                <div id="files-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                <div id="folders-container" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6"></div>
+                <div id="files-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
               </div>
             </div>
 
             <div id="history-view" class="app-view hidden">
-              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6 space-y-6">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-lg font-semibold text-slate-100">历史上传直链</h3>
-                  <button id="btn-history-refresh" class="px-3 py-2 rounded-lg bg-slate-800 text-sm hover:bg-slate-700">刷新</button>
+              <div class="card rounded-3xl p-8 animate-in">
+                <div class="flex items-center gap-3 mb-6">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-2xl" style="background: linear-gradient(135deg, #f3d2c1 0%, #fef6e4 100%);">📜</div>
+                  <h3 class="text-xl font-bold" style="color: var(--color-headline);">历史上传直链</h3>
+                  <button id="btn-history-refresh" class="ml-auto px-4 py-2 rounded-xl btn-secondary text-sm">🔄 刷新</button>
                 </div>
-                <div class="flex items-center gap-3">
-                  <input id="history-search" type="search" placeholder="搜索文件" class="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
-                  <span class="text-xs text-slate-500" id="history-meta"></span>
+                <div class="flex items-center gap-3 mb-6">
+                  <input id="history-search" type="search" placeholder="🔍 搜索文件..." class="flex-1 px-4 py-3 rounded-xl text-sm" />
+                  <span class="badge" id="history-meta"></span>
                 </div>
-                <div class="overflow-auto border border-slate-800 rounded-xl max-h-[480px]">
+                <div class="overflow-auto rounded-2xl max-h-[600px]" style="border: 2px solid rgba(139, 211, 221, 0.2);">
                   <table class="min-w-full text-left text-sm">
-                    <thead class="bg-slate-800/60 text-slate-400 text-xs uppercase tracking-wider sticky top-0">
+                    <thead class="sticky top-0 text-xs uppercase tracking-wider font-semibold" style="background: linear-gradient(135deg, rgba(139, 211, 221, 0.3) 0%, rgba(243, 210, 193, 0.3) 100%); color: var(--color-headline);">
                       <tr>
-                        <th class="px-4 py-3">文件名</th>
-                        <th class="px-4 py-3">存储路径</th>
-                        <th class="px-4 py-3">上传时间</th>
-                        <th class="px-4 py-3">类型</th>
-                        <th class="px-4 py-3">大小</th>
-                        <th class="px-4 py-3 text-right">操作</th>
+                        <th class="px-5 py-4">文件名</th>
+                        <th class="px-5 py-4">存储路径</th>
+                        <th class="px-5 py-4">上传时间</th>
+                        <th class="px-5 py-4">类型</th>
+                        <th class="px-5 py-4">大小</th>
+                        <th class="px-5 py-4 text-right">操作</th>
                       </tr>
                     </thead>
-                    <tbody id="history-table" class="divide-y divide-slate-800">
+                    <tbody id="history-table" style="background: rgba(255, 255, 255, 0.5);">
                       <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">加载中...</td>
+                        <td colspan="6" class="px-5 py-8 text-center" style="color: var(--color-paragraph);">加载中...</td>
                       </tr>
                     </tbody>
                   </table>
@@ -153,31 +396,58 @@
             </div>
 
             <div id="settings-view" class="app-view hidden">
-              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6 space-y-6">
+              <div class="card rounded-3xl p-8 animate-in space-y-8">
                 <div>
-                  <h3 class="text-lg font-semibold mb-2">统计</h3>
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="stats-grid">
-                    <div class="p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
-                      <p class="text-xs text-slate-500">文件总数</p>
-                      <p id="stats-total-files" class="text-2xl font-semibold text-slate-100 mt-1">-</p>
+                  <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-2xl" style="background: linear-gradient(135deg, #f582ae 0%, #f89dc4 100%);">📊</div>
+                    <h3 class="text-xl font-bold" style="color: var(--color-headline);">统计信息</h3>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="stats-grid">
+                    <div class="stat-card p-6 rounded-2xl">
+                      <div class="flex items-center justify-between mb-3">
+                        <span class="text-3xl">📁</span>
+                        <span class="badge text-xs">FILES</span>
+                      </div>
+                      <p class="text-xs font-semibold uppercase tracking-wide mb-2" style="color: var(--color-paragraph); opacity: 0.7;">文件总数</p>
+                      <p id="stats-total-files" class="text-4xl font-bold" style="color: var(--color-headline);">-</p>
                     </div>
-                    <div class="p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
-                      <p class="text-xs text-slate-500">存储用量</p>
-                      <p id="stats-total-size" class="text-2xl font-semibold text-slate-100 mt-1">-</p>
+                    <div class="stat-card p-6 rounded-2xl">
+                      <div class="flex items-center justify-between mb-3">
+                        <span class="text-3xl">💾</span>
+                        <span class="badge text-xs">STORAGE</span>
+                      </div>
+                      <p class="text-xs font-semibold uppercase tracking-wide mb-2" style="color: var(--color-paragraph); opacity: 0.7;">存储用量</p>
+                      <p id="stats-total-size" class="text-4xl font-bold" style="color: var(--color-headline);">-</p>
                     </div>
-                    <div class="p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
-                      <p class="text-xs text-slate-500">最近上传</p>
-                      <p id="stats-recent" class="text-sm text-slate-300 mt-1">-</p>
+                    <div class="stat-card p-6 rounded-2xl">
+                      <div class="flex items-center justify-between mb-3">
+                        <span class="text-3xl">⏰</span>
+                        <span class="badge text-xs">RECENT</span>
+                      </div>
+                      <p class="text-xs font-semibold uppercase tracking-wide mb-2" style="color: var(--color-paragraph); opacity: 0.7;">最近上传</p>
+                      <p id="stats-recent" class="text-sm font-medium mt-2 truncate" style="color: var(--color-paragraph);">-</p>
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <h3 class="text-lg font-semibold mb-2">安全提示</h3>
-                  <ul class="text-sm text-slate-400 space-y-1 list-disc list-inside">
-                    <li>生产环境请将 `APP_PASSWORD` 使用哈希存储并定期更换。</li>
-                    <li>建议为公开域名配置 CORS 白名单。</li>
-                    <li>配合 Cloudflare 防火墙或 Turnstile 进一步防护。</li>
+                <div class="card rounded-2xl p-6" style="background: linear-gradient(135deg, rgba(139, 211, 221, 0.1) 0%, rgba(243, 210, 193, 0.1) 100%);">
+                  <div class="flex items-center gap-2 mb-4">
+                    <span class="text-2xl">🔒</span>
+                    <h3 class="text-lg font-bold" style="color: var(--color-headline);">安全提示</h3>
+                  </div>
+                  <ul class="text-sm space-y-3" style="color: var(--color-paragraph);">
+                    <li class="flex items-start gap-2">
+                      <span class="text-lg">•</span>
+                      <span>生产环境请将 <code class="px-2 py-1 rounded text-xs font-mono" style="background: rgba(0, 24, 88, 0.1);">APP_PASSWORD</code> 使用哈希存储并定期更换。</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-lg">•</span>
+                      <span>建议为公开域名配置 CORS 白名单。</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-lg">•</span>
+                      <span>配合 Cloudflare 防火墙或 Turnstile 进一步防护。</span>
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -187,7 +457,7 @@
       </main>
     </div>
 
-    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-slate-900/90 border border-slate-700 text-sm text-slate-100 shadow-lg hidden"></div>
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full toast text-sm font-medium shadow-2xl hidden z-50"></div>
 
     <script>
       const state = {
@@ -249,7 +519,7 @@
       function setActiveNav(section) {
         dom.nav.forEach((btn) => {
           btn.classList.toggle(
-            'bg-slate-800',
+            'active',
             btn.dataset.section === section,
           );
         });
@@ -282,7 +552,7 @@
         }
         const response = await fetch(path, { ...options, headers });
         if (response.status === 401) {
-          showToast('身份已过期，请重新登录');
+          showToast('⚠️ 身份已过期，请重新登录');
           showLogin();
           return null;
         }
@@ -357,7 +627,7 @@
             showUploadResult(data.data || data);
             await loadFiles(state.currentPath);
           } catch (err) {
-            showToast(err.message || '上传失败');
+            showToast('❌ ' + (err.message || '上传失败'));
           }
         }
 
@@ -446,7 +716,7 @@
         if (state.filteredHistory.length === 0) {
           const emptyRow = document.createElement('tr');
           emptyRow.innerHTML = `
-            <td colspan="6" class="px-4 py-6 text-center text-slate-500">暂无记录</td>
+            <td colspan="6" class="px-5 py-8 text-center" style="color: var(--color-paragraph);">暂无记录</td>
           `;
           dom.historyTable.appendChild(emptyRow);
           return;
@@ -454,23 +724,30 @@
 
         state.filteredHistory.forEach((file) => {
           const row = document.createElement('tr');
-          row.className = 'hover:bg-slate-800/40 transition';
+          row.className = 'transition';
+          row.style.cssText = 'border-bottom: 1px solid rgba(139, 211, 221, 0.1);';
+          row.addEventListener('mouseenter', () => {
+            row.style.background = 'rgba(139, 211, 221, 0.1)';
+          });
+          row.addEventListener('mouseleave', () => {
+            row.style.background = '';
+          });
 
           const uploaded = file.uploaded
             ? new Date(file.uploaded).toLocaleString()
             : '-';
 
           row.innerHTML = `
-            <td class="px-4 py-3 text-slate-200">${file.name || '-'}</td>
-            <td class="px-4 py-3 text-slate-400 text-xs">${file.key}</td>
-            <td class="px-4 py-3 text-slate-400">${uploaded}</td>
-            <td class="px-4 py-3 text-slate-400">${file.type || '-'}</td>
-            <td class="px-4 py-3 text-slate-400">${(file.size / 1024).toFixed(2)} KB</td>
-            <td class="px-4 py-3 text-right">
+            <td class="px-5 py-4 font-medium" style="color: var(--color-headline);">${file.name || '-'}</td>
+            <td class="px-5 py-4 text-xs" style="color: var(--color-paragraph); opacity: 0.7;">${file.key}</td>
+            <td class="px-5 py-4 text-xs" style="color: var(--color-paragraph);">${uploaded}</td>
+            <td class="px-5 py-4 text-xs" style="color: var(--color-paragraph);">${file.type || '-'}</td>
+            <td class="px-5 py-4 text-xs font-semibold" style="color: var(--color-button);">${(file.size / 1024).toFixed(2)} KB</td>
+            <td class="px-5 py-4 text-right">
               ${
                 file.url
-                  ? `<button data-url="${file.url}" class="history-copy px-3 py-2 rounded-lg bg-slate-700 text-xs hover:bg-slate-600">复制直链</button>`
-                  : `<span class="text-slate-500 text-xs">未配置直链</span>`
+                  ? `<button data-url="${file.url}" class="history-copy px-4 py-2 btn-secondary rounded-xl text-xs font-semibold">📋 复制</button>`
+                  : `<span class="text-xs" style="color: var(--color-paragraph); opacity: 0.5;">未配置直链</span>`
               }
             </td>
           `;
@@ -478,7 +755,7 @@
           row.querySelectorAll('.history-copy').forEach((btn) => {
             btn.addEventListener('click', async () => {
               await navigator.clipboard.writeText(btn.dataset.url);
-              showToast('直链已复制');
+              showToast('✅ 直链已复制');
             });
           });
 
@@ -488,13 +765,13 @@
 
       function renderBreadcrumb() {
         const segments = state.currentPath ? state.currentPath.split('/').filter(Boolean) : [];
-        const parts = ['<span class="cursor-pointer hover:text-sky-400" data-prefix="">根目录</span>'];
+        const parts = ['<span class="cursor-pointer hover:opacity-70 transition-opacity font-semibold" data-prefix="" style="color: var(--color-button);">🏠 根目录</span>'];
         let prefix = '';
         segments.forEach((segment) => {
           prefix += `${segment}/`;
-          parts.push(`<span class="text-slate-600">/</span>`);
+          parts.push(`<span style="color: var(--color-paragraph); opacity: 0.5;"> / </span>`);
           parts.push(
-            `<span class="cursor-pointer hover:text-sky-400" data-prefix="${prefix}">${segment}</span>`,
+            `<span class="cursor-pointer hover:opacity-70 transition-opacity font-semibold" data-prefix="${prefix}" style="color: var(--color-button);">${segment}</span>`,
           );
         });
         dom.breadcrumb.innerHTML = parts.join(' ');
@@ -508,11 +785,11 @@
         state.folders.forEach((folder) => {
           const name = folder.split('/').filter(Boolean).pop();
           const card = document.createElement('button');
-          card.className = 'group text-left p-4 rounded-xl border border-slate-700 bg-slate-800/60 hover:border-sky-500 hover:bg-slate-800 transition flex flex-col gap-2';
+          card.className = 'file-card text-left p-5 rounded-2xl transition flex flex-col gap-3 cursor-pointer';
           card.innerHTML = `
-            <span class="text-2xl">📁</span>
-            <span class="text-sm font-medium text-slate-200">${name}</span>
-            <span class="text-xs text-slate-500">${folder}</span>
+            <div class="text-4xl mb-1">📁</div>
+            <span class="text-sm font-bold truncate" style="color: var(--color-headline);">${name}</span>
+            <span class="text-xs truncate" style="color: var(--color-paragraph); opacity: 0.7;">${folder}</span>
           `;
           card.addEventListener('click', () => loadFiles(folder));
           dom.foldersContainer.appendChild(card);
@@ -528,26 +805,26 @@
         dom.filesContainer.innerHTML = '';
         state.filteredFiles.forEach((file) => {
           const card = document.createElement('div');
-          card.className = 'relative rounded-xl border border-slate-700 bg-slate-800/60 overflow-hidden shadow-sm hover:border-sky-500 transition';
+          card.className = 'relative file-card rounded-2xl overflow-hidden';
 
           const checkboxId = `select-${btoa(file.key).replace(/[^a-z0-9]/gi, '')}`;
           card.innerHTML = `
-            <div class="absolute top-3 left-3">
-              <input id="${checkboxId}" type="checkbox" class="file-checkbox w-4 h-4 rounded border-slate-600 bg-slate-900" />
+            <div class="absolute top-4 left-4 z-10">
+              <input id="${checkboxId}" type="checkbox" class="file-checkbox w-5 h-5 rounded cursor-pointer" style="accent-color: var(--color-button);" />
             </div>
-            <div class="h-48 bg-slate-900 flex items-center justify-center overflow-hidden">
-              ${file.url ? `<img src="${file.url}" alt="${file.name}" class="w-full h-full object-cover" />` : `<div class="text-slate-500 text-sm">无预览</div>`}
+            <div class="file-thumbnail h-64 flex items-center justify-center overflow-hidden">
+              ${file.url ? `<img src="${file.url}" alt="${file.name}" class="w-full h-full object-cover" />` : `<div class="text-2xl" style="color: var(--color-paragraph); opacity: 0.3;">🖼️</div>`}
             </div>
-            <div class="p-4 space-y-2">
-              <div class="text-sm font-medium text-slate-100 truncate">${file.name}</div>
-              <div class="text-xs text-slate-500 space-y-1">
-                <p>${file.key}</p>
-                <p>${(file.size / 1024).toFixed(2)} KB · ${file.type || 'unknown'}</p>
-                <p>${file.uploaded || '-'}</p>
+            <div class="p-5 space-y-3">
+              <div class="text-base font-bold truncate" style="color: var(--color-headline);">${file.name}</div>
+              <div class="text-xs space-y-1.5" style="color: var(--color-paragraph); opacity: 0.7;">
+                <p class="truncate">📂 ${file.key}</p>
+                <p>💾 ${(file.size / 1024).toFixed(2)} KB · ${file.type || 'unknown'}</p>
+                <p>⏰ ${file.uploaded || '-'}</p>
               </div>
               <div class="flex gap-2 pt-2">
-                ${file.url ? `<button data-url="${file.url}" class="copy-link flex-1 px-3 py-2 rounded-lg bg-slate-700 text-xs">复制链接</button>` : ''}
-                <button data-key="${file.key}" class="delete-file px-3 py-2 rounded-lg bg-rose-500/80 text-xs">删除</button>
+                ${file.url ? `<button data-url="${file.url}" class="copy-link flex-1 px-4 py-2.5 btn-secondary rounded-xl text-xs font-semibold">📋 复制</button>` : ''}
+                <button data-key="${file.key}" class="delete-file px-4 py-2.5 btn-danger rounded-xl text-xs font-semibold whitespace-nowrap">🗑️ 删除</button>
               </div>
             </div>
           `;
@@ -565,7 +842,7 @@
           card.querySelectorAll('.copy-link').forEach((btn) => {
             btn.addEventListener('click', async () => {
               await navigator.clipboard.writeText(btn.dataset.url);
-              showToast('链接已复制');
+              showToast('✅ 链接已复制');
             });
           });
 
@@ -597,7 +874,7 @@
           if (!res.ok) {
             throw new Error(data.error || '删除失败');
           }
-          showToast(`已删除 ${data.deleted || keys.length} 个文件`);
+          showToast(`✅ 已删除 ${data.deleted || keys.length} 个文件`);
           state.selected.clear();
           await loadFiles(state.currentPath);
         } catch (err) {
@@ -620,7 +897,7 @@
           if (!res.ok) {
             throw new Error(data.error || '创建失败');
           }
-          showToast('文件夹已创建');
+          showToast('✅ 文件夹已创建');
           await loadFiles(state.currentPath);
         } catch (err) {
           showToast(err.message);
@@ -629,7 +906,7 @@
 
       async function deleteSelected() {
         if (state.selected.size === 0) {
-          showToast('请选择要删除的文件');
+          showToast('⚠️ 请选择要删除的文件');
           return;
         }
         await deleteFiles(Array.from(state.selected));
@@ -680,7 +957,7 @@
           btn.addEventListener('click', async () => {
             const input = $(btn.dataset.target);
             await navigator.clipboard.writeText(input.value);
-            showToast('已复制到剪贴板');
+            showToast('✅ 已复制到剪贴板');
           });
         });
 
