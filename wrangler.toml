@@ -1,0 +1,21 @@
+name = "r2-image-host"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+R2_PUBLIC_DOMAIN = "https://img.example.com"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "<your-kv-namespace-id>"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "<your-r2-bucket-name>"
+
+[build.upload]
+format = "modules"
+
+[site]
+bucket = "src/static"
+

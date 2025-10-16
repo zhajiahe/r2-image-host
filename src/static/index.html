@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>R2 图床控制台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html,
+      body {
+        height: 100%;
+        background: #0f172a;
+        color: #f8fafc;
+      }
+
+      .dropzone-active {
+        border-color: #38bdf8;
+        background: rgba(56, 189, 248, 0.1);
+      }
+    </style>
+  </head>
+  <body class="min-h-full">
+    <div class="min-h-full flex flex-col">
+      <header class="border-b border-slate-700 bg-slate-900/70 backdrop-blur">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl font-semibold text-sky-400">R2 Image Host</span>
+            <span class="text-sm text-slate-400 hidden md:block">Cloudflare Workers + R2 图床控制台</span>
+          </div>
+          <nav class="flex items-center gap-2" id="main-nav" hidden>
+            <button data-section="upload" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">上传</button>
+            <button data-section="files" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">文件管理</button>
+            <button data-section="settings" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">设置</button>
+          </nav>
+          <button id="logout-btn" class="hidden text-sm text-slate-400 hover:text-red-400">退出</button>
+        </div>
+      </header>
+
+      <main class="flex-1">
+        <section id="login-section" class="max-w-md mx-auto mt-24 bg-slate-900/70 border border-slate-700 rounded-2xl p-8 shadow-xl">
+          <h2 class="text-xl font-semibold mb-6 text-center">登录</h2>
+          <label class="block text-sm font-medium text-slate-300 mb-2" for="password">访问密码</label>
+          <input id="password" type="password" class="w-full px-4 py-3 rounded-lg bg-slate-800/80 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="请输入密码" />
+          <button id="login-btn" class="mt-6 w-full py-3 rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-medium">登录</button>
+          <p id="login-error" class="mt-4 text-sm text-red-400 hidden">密码错误，请重试。</p>
+        </section>
+
+        <section id="app-section" class="hidden">
+          <div class="max-w-6xl mx-auto px-4 py-10 space-y-10">
+            <div id="upload-view" class="app-view space-y-6">
+              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6">
+                <h3 class="text-lg font-semibold flex items-center gap-2 mb-4">
+                  <span class="w-2 h-2 rounded-full bg-sky-400"></span> 上传图片
+                </h3>
+                <div id="drop-zone" class="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center transition">
+                  <p class="text-slate-300 mb-4">拖拽图片到这里或点击选择</p>
+                  <label class="inline-flex items-center gap-3 px-4 py-2 bg-slate-800 rounded-lg cursor-pointer hover:bg-slate-700">
+                    <span class="text-sm">选择文件</span>
+                    <input id="file-input" type="file" accept="image/*" multiple class="hidden" />
+                  </label>
+                  <p class="mt-2 text-xs text-slate-500">支持 JPEG/PNG/GIF/WebP/SVG，单文件 ≤ 10MB</p>
+                </div>
+
+                <div id="upload-progress" class="hidden mt-6">
+                  <div class="flex items-center justify-between text-sm text-slate-300">
+                    <span>上传中...</span>
+                    <span id="progress-text">0%</span>
+                  </div>
+                  <div class="w-full h-2 bg-slate-800 rounded-full mt-2">
+                    <div id="progress-bar" class="h-full bg-sky-400 rounded-full" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div id="upload-result" class="hidden mt-6 bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm text-slate-400">上传成功</p>
+                      <p id="result-key" class="text-base font-medium text-slate-100"></p>
+                    </div>
+                    <button id="result-close" class="text-slate-500 hover:text-slate-300">×</button>
+                  </div>
+                  <img id="result-preview" src="" alt="预览" class="w-full max-h-64 object-cover rounded-lg border border-slate-700" />
+                  <div class="grid gap-2">
+                    <div class="flex gap-2">
+                      <input id="link-direct" readonly class="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs" />
+                      <button data-target="link-direct" class="copy-btn px-3 py-2 bg-slate-700 rounded-lg text-xs">复制直链</button>
+                    </div>
+                    <div class="flex gap-2">
+                      <input id="link-markdown" readonly class="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs" />
+                      <button data-target="link-markdown" class="copy-btn px-3 py-2 bg-slate-700 rounded-lg text-xs">复制 Markdown</button>
+                    </div>
+                    <div class="flex gap-2">
+                      <input id="link-html" readonly class="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs" />
+                      <button data-target="link-html" class="copy-btn px-3 py-2 bg-slate-700 rounded-lg text-xs">复制 HTML</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="files-view" class="app-view hidden space-y-6">
+              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6 space-y-6">
+                <div class="flex flex-wrap items-center gap-3 justify-between">
+                  <div class="text-sm text-slate-400" id="breadcrumb"></div>
+                  <div class="flex flex-wrap gap-2">
+                    <button id="btn-refresh" class="px-3 py-2 rounded-lg bg-slate-800 text-sm hover:bg-slate-700">刷新</button>
+                    <button id="btn-create-folder" class="px-3 py-2 rounded-lg bg-sky-500/80 hover:bg-sky-400 text-sm">新建文件夹</button>
+                    <button id="btn-delete-selected" class="px-3 py-2 rounded-lg bg-rose-500/80 hover:bg-rose-400 text-sm">删除选中</button>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <input id="search-input" type="search" placeholder="搜索文件" class="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+                  <span class="text-xs text-slate-500" id="files-meta"></span>
+                </div>
+
+                <div id="folders-container" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+                <div id="files-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+              </div>
+            </div>
+
+            <div id="settings-view" class="app-view hidden">
+              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6 space-y-6">
+                <div>
+                  <h3 class="text-lg font-semibold mb-2">统计</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="stats-grid">
+                    <div class="p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
+                      <p class="text-xs text-slate-500">文件总数</p>
+                      <p id="stats-total-files" class="text-2xl font-semibold text-slate-100 mt-1">-</p>
+                    </div>
+                    <div class="p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
+                      <p class="text-xs text-slate-500">存储用量</p>
+                      <p id="stats-total-size" class="text-2xl font-semibold text-slate-100 mt-1">-</p>
+                    </div>
+                    <div class="p-4 bg-slate-800/60 border border-slate-700 rounded-xl">
+                      <p class="text-xs text-slate-500">最近上传</p>
+                      <p id="stats-recent" class="text-sm text-slate-300 mt-1">-</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 class="text-lg font-semibold mb-2">安全提示</h3>
+                  <ul class="text-sm text-slate-400 space-y-1 list-disc list-inside">
+                    <li>生产环境请将 `APP_PASSWORD` 使用哈希存储并定期更换。</li>
+                    <li>建议为公开域名配置 CORS 白名单。</li>
+                    <li>配合 Cloudflare 防火墙或 Turnstile 进一步防护。</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-slate-900/90 border border-slate-700 text-sm text-slate-100 shadow-lg hidden"></div>
+
+    <script>
+      const state = {
+        token: localStorage.getItem('token') || null,
+        currentPath: '',
+        files: [],
+        folders: [],
+        filteredFiles: [],
+        selected: new Set(),
+      };
+
+      const dom = {};
+
+      function $(id) {
+        return document.getElementById(id);
+      }
+
+      function initDom() {
+        dom.loginSection = $('login-section');
+        dom.appSection = $('app-section');
+        dom.nav = document.querySelectorAll('.nav-btn');
+        dom.mainNav = $('main-nav');
+        dom.logout = $('logout-btn');
+        dom.dropZone = $('drop-zone');
+        dom.fileInput = $('file-input');
+        dom.uploadProgress = $('upload-progress');
+        dom.progressBar = $('progress-bar');
+        dom.progressText = $('progress-text');
+        dom.uploadResult = $('upload-result');
+        dom.resultKey = $('result-key');
+        dom.resultPreview = $('result-preview');
+        dom.linkDirect = $('link-direct');
+        dom.linkMarkdown = $('link-markdown');
+        dom.linkHtml = $('link-html');
+        dom.resultClose = $('result-close');
+        dom.breadcrumb = $('breadcrumb');
+        dom.filesContainer = $('files-container');
+        dom.foldersContainer = $('folders-container');
+        dom.filesMeta = $('files-meta');
+        dom.searchInput = $('search-input');
+        dom.statsTotalFiles = $('stats-total-files');
+        dom.statsTotalSize = $('stats-total-size');
+        dom.statsRecent = $('stats-recent');
+      }
+
+      function showToast(message, duration = 2200) {
+        const toast = $('toast');
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => toast.classList.add('hidden'), duration);
+      }
+
+      function setActiveNav(section) {
+        dom.nav.forEach((btn) => {
+          btn.classList.toggle(
+            'bg-slate-800',
+            btn.dataset.section === section,
+          );
+        });
+        document.querySelectorAll('.app-view').forEach((view) => {
+          view.classList.toggle('hidden', view.id !== `${section}-view`);
+        });
+      }
+
+      function showApp() {
+        dom.loginSection.classList.add('hidden');
+        dom.appSection.classList.remove('hidden');
+        dom.mainNav.hidden = false;
+        dom.logout.classList.remove('hidden');
+        setActiveNav('upload');
+      }
+
+      function showLogin() {
+        state.token = null;
+        localStorage.removeItem('token');
+        dom.loginSection.classList.remove('hidden');
+        dom.appSection.classList.add('hidden');
+        dom.mainNav.hidden = true;
+        dom.logout.classList.add('hidden');
+      }
+
+      async function apiFetch(path, options = {}) {
+        const headers = new Headers(options.headers || {});
+        if (state.token) {
+          headers.set('Authorization', `Bearer ${state.token}`);
+        }
+        const response = await fetch(path, { ...options, headers });
+        if (response.status === 401) {
+          showToast('身份已过期，请重新登录');
+          showLogin();
+          return null;
+        }
+        return response;
+      }
+
+      async function login() {
+        const password = $('password').value.trim();
+        if (!password) {
+          $('login-error').textContent = '请输入密码';
+          $('login-error').classList.remove('hidden');
+          return;
+        }
+
+        $('login-btn').disabled = true;
+        $('login-error').classList.add('hidden');
+
+        try {
+          const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+          });
+
+          const data = await res.json();
+          if (!res.ok || !data.token) {
+            throw new Error(data.error || '登录失败');
+          }
+
+          state.token = data.token;
+          localStorage.setItem('token', data.token);
+          showApp();
+          await loadFiles();
+          await loadStats();
+        } catch (err) {
+          $('login-error').textContent = err.message;
+          $('login-error').classList.remove('hidden');
+        } finally {
+          $('login-btn').disabled = false;
+        }
+      }
+
+      async function handleUpload(files) {
+        if (!files || files.length === 0) return;
+
+        dom.uploadProgress.classList.remove('hidden');
+        dom.progressBar.style.width = '0%';
+        dom.progressText.textContent = '0%';
+
+        for (let index = 0; index < files.length; index += 1) {
+          const file = files[index];
+          const formData = new FormData();
+          formData.append('file', file);
+          if (state.currentPath) {
+            formData.append('path', state.currentPath);
+          }
+
+          try {
+            dom.progressText.textContent = `处理中 ${index + 1}/${files.length}`;
+            const res = await apiFetch('/api/upload', {
+              method: 'POST',
+              body: formData,
+            });
+            if (!res) return;
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || '上传失败');
+            }
+
+            dom.progressBar.style.width = `${Math.round(((index + 1) / files.length) * 100)}%`;
+            dom.progressText.textContent = `${Math.round(((index + 1) / files.length) * 100)}%`;
+            showUploadResult(data.data || data);
+            await loadFiles(state.currentPath);
+          } catch (err) {
+            showToast(err.message || '上传失败');
+          }
+        }
+
+        setTimeout(() => dom.uploadProgress.classList.add('hidden'), 500);
+      }
+
+      function showUploadResult(info) {
+        if (!info) return;
+        dom.uploadResult.classList.remove('hidden');
+        dom.resultKey.textContent = info.key;
+        if (info.url) {
+          dom.resultPreview.src = info.url;
+          dom.linkDirect.value = info.url;
+          dom.linkMarkdown.value = `![${info.filename}](${info.url})`;
+          dom.linkHtml.value = `<img src="${info.url}" alt="${info.filename}" />`;
+        } else {
+          dom.resultPreview.src = '';
+          dom.linkDirect.value = window.location.origin + '/' + info.key;
+        }
+      }
+
+      async function loadFiles(prefix = '') {
+        const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : '';
+        const res = await apiFetch(`/api/files${query}`);
+        if (!res) return;
+        const payload = await res.json();
+        if (!res.ok) {
+          showToast(payload.error || '加载失败');
+          return;
+        }
+        const data = payload.data || payload;
+        state.currentPath = prefix;
+        state.files = data.files || [];
+        state.folders = data.folders || [];
+        state.filteredFiles = state.files;
+        state.selected.clear();
+        renderBreadcrumb();
+        renderFolders();
+        renderFiles();
+      }
+
+      async function loadStats() {
+        const res = await apiFetch('/api/stats');
+        if (!res) return;
+        const payload = await res.json();
+        if (!res.ok) {
+          showToast(payload.error || '获取统计失败');
+          return;
+        }
+        const data = payload.data || payload;
+        dom.statsTotalFiles.textContent = data.totalFiles ?? '-';
+        dom.statsTotalSize.textContent = data.totalSizeFormatted ?? '-';
+        dom.statsRecent.textContent = data.recentUploads?.[0]?.key || '暂无';
+      }
+
+      function renderBreadcrumb() {
+        const segments = state.currentPath ? state.currentPath.split('/').filter(Boolean) : [];
+        const parts = ['<span class="cursor-pointer hover:text-sky-400" data-prefix="">根目录</span>'];
+        let prefix = '';
+        segments.forEach((segment) => {
+          prefix += `${segment}/`;
+          parts.push(`<span class="text-slate-600">/</span>`);
+          parts.push(
+            `<span class="cursor-pointer hover:text-sky-400" data-prefix="${prefix}">${segment}</span>`,
+          );
+        });
+        dom.breadcrumb.innerHTML = parts.join(' ');
+        dom.breadcrumb.querySelectorAll('[data-prefix]').forEach((el) => {
+          el.addEventListener('click', () => loadFiles(el.dataset.prefix));
+        });
+      }
+
+      function renderFolders() {
+        dom.foldersContainer.innerHTML = '';
+        state.folders.forEach((folder) => {
+          const name = folder.split('/').filter(Boolean).pop();
+          const card = document.createElement('button');
+          card.className = 'group text-left p-4 rounded-xl border border-slate-700 bg-slate-800/60 hover:border-sky-500 hover:bg-slate-800 transition flex flex-col gap-2';
+          card.innerHTML = `
+            <span class="text-2xl">📁</span>
+            <span class="text-sm font-medium text-slate-200">${name}</span>
+            <span class="text-xs text-slate-500">${folder}</span>
+          `;
+          card.addEventListener('click', () => loadFiles(folder));
+          dom.foldersContainer.appendChild(card);
+        });
+      }
+
+      function renderFiles() {
+        const search = dom.searchInput.value.trim().toLowerCase();
+        state.filteredFiles = state.files.filter((file) =>
+          !search || file.name.toLowerCase().includes(search) || file.key.toLowerCase().includes(search),
+        );
+
+        dom.filesContainer.innerHTML = '';
+        state.filteredFiles.forEach((file) => {
+          const card = document.createElement('div');
+          card.className = 'relative rounded-xl border border-slate-700 bg-slate-800/60 overflow-hidden shadow-sm hover:border-sky-500 transition';
+
+          const checkboxId = `select-${btoa(file.key).replace(/[^a-z0-9]/gi, '')}`;
+          card.innerHTML = `
+            <div class="absolute top-3 left-3">
+              <input id="${checkboxId}" type="checkbox" class="file-checkbox w-4 h-4 rounded border-slate-600 bg-slate-900" />
+            </div>
+            <div class="h-48 bg-slate-900 flex items-center justify-center overflow-hidden">
+              ${file.url ? `<img src="${file.url}" alt="${file.name}" class="w-full h-full object-cover" />` : `<div class="text-slate-500 text-sm">无预览</div>`}
+            </div>
+            <div class="p-4 space-y-2">
+              <div class="text-sm font-medium text-slate-100 truncate">${file.name}</div>
+              <div class="text-xs text-slate-500 space-y-1">
+                <p>${file.key}</p>
+                <p>${(file.size / 1024).toFixed(2)} KB · ${file.type || 'unknown'}</p>
+                <p>${file.uploaded || '-'}</p>
+              </div>
+              <div class="flex gap-2 pt-2">
+                ${file.url ? `<button data-url="${file.url}" class="copy-link flex-1 px-3 py-2 rounded-lg bg-slate-700 text-xs">复制链接</button>` : ''}
+                <button data-key="${file.key}" class="delete-file px-3 py-2 rounded-lg bg-rose-500/80 text-xs">删除</button>
+              </div>
+            </div>
+          `;
+
+          const checkbox = card.querySelector('.file-checkbox');
+          checkbox.addEventListener('change', (event) => {
+            if (event.target.checked) {
+              state.selected.add(file.key);
+            } else {
+              state.selected.delete(file.key);
+            }
+            updateFilesMeta();
+          });
+
+          card.querySelectorAll('.copy-link').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              await navigator.clipboard.writeText(btn.dataset.url);
+              showToast('链接已复制');
+            });
+          });
+
+          card.querySelectorAll('.delete-file').forEach((btn) => {
+            btn.addEventListener('click', () => deleteFiles([btn.dataset.key]));
+          });
+
+          dom.filesContainer.appendChild(card);
+        });
+
+        updateFilesMeta();
+      }
+
+      function updateFilesMeta() {
+        dom.filesMeta.textContent = `${state.filteredFiles.length} 个文件 · 已选 ${state.selected.size}`;
+      }
+
+      async function deleteFiles(keys) {
+        if (!keys || keys.length === 0) return;
+        if (!confirm(`确定删除 ${keys.length} 个对象？`)) return;
+        try {
+          const res = await apiFetch('/api/files', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keys }),
+          });
+          if (!res) return;
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || '删除失败');
+          }
+          showToast(`已删除 ${data.deleted || keys.length} 个文件`);
+          state.selected.clear();
+          await loadFiles(state.currentPath);
+        } catch (err) {
+          showToast(err.message);
+        }
+      }
+
+      async function createFolder() {
+        const name = prompt('文件夹名称');
+        if (!name) return;
+        const path = state.currentPath ? `${state.currentPath}${name}/` : `${name}/`;
+        try {
+          const res = await apiFetch('/api/folders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path }),
+          });
+          if (!res) return;
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || '创建失败');
+          }
+          showToast('文件夹已创建');
+          await loadFiles(state.currentPath);
+        } catch (err) {
+          showToast(err.message);
+        }
+      }
+
+      async function deleteSelected() {
+        if (state.selected.size === 0) {
+          showToast('请选择要删除的文件');
+          return;
+        }
+        await deleteFiles(Array.from(state.selected));
+      }
+
+      function setupEventListeners() {
+        $('login-btn').addEventListener('click', login);
+        $('password').addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') login();
+        });
+
+        dom.nav.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            setActiveNav(btn.dataset.section);
+            if (btn.dataset.section === 'files') {
+              loadFiles(state.currentPath);
+            }
+            if (btn.dataset.section === 'settings') {
+              loadStats();
+            }
+          });
+        });
+
+        dom.logout.addEventListener('click', () => {
+          showLogin();
+        });
+
+        dom.fileInput.addEventListener('change', (event) => handleUpload(event.target.files));
+
+        dom.dropZone.addEventListener('click', () => dom.fileInput.click());
+        dom.dropZone.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          dom.dropZone.classList.add('dropzone-active');
+        });
+        dom.dropZone.addEventListener('dragleave', () => dom.dropZone.classList.remove('dropzone-active'));
+        dom.dropZone.addEventListener('drop', (event) => {
+          event.preventDefault();
+          dom.dropZone.classList.remove('dropzone-active');
+          handleUpload(event.dataTransfer.files);
+        });
+
+        dom.resultClose.addEventListener('click', () => dom.uploadResult.classList.add('hidden'));
+
+        document.querySelectorAll('.copy-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const input = $(btn.dataset.target);
+            await navigator.clipboard.writeText(input.value);
+            showToast('已复制到剪贴板');
+          });
+        });
+
+        $('btn-create-folder').addEventListener('click', createFolder);
+        $('btn-delete-selected').addEventListener('click', deleteSelected);
+        $('btn-refresh').addEventListener('click', () => loadFiles(state.currentPath));
+        dom.searchInput.addEventListener('input', renderFiles);
+      }
+
+      async function bootstrap() {
+        initDom();
+        setupEventListeners();
+        if (state.token) {
+          showApp();
+          await Promise.all([loadFiles(), loadStats()]);
+        }
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>
+
