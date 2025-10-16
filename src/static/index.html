@@ -285,15 +285,27 @@
                   <div class="w-10 h-10 rounded-xl flex items-center justify-center text-2xl" style="background: linear-gradient(135deg, #f582ae 0%, #8bd3dd 100%);">📤</div>
                   <h3 class="text-xl font-bold" style="color: var(--color-headline);">上传图片</h3>
                 </div>
-                <div id="drop-zone" class="dropzone rounded-2xl p-16 text-center cursor-pointer">
+                <div id="drop-zone" class="dropzone rounded-2xl p-16 text-center">
                   <div class="icon-upload">📁</div>
                   <p class="text-lg font-semibold mt-4 mb-2" style="color: var(--color-headline);">拖拽图片到这里</p>
-                  <p class="text-sm mb-6" style="color: var(--color-paragraph);">或点击选择文件上传</p>
+                  <p class="text-sm mb-6" style="color: var(--color-paragraph);">或点击选择文件 / 按 Ctrl+V 粘贴</p>
                   <label class="inline-flex items-center gap-2 px-6 py-3 btn-primary rounded-xl cursor-pointer">
                     <span>选择文件</span>
                     <input id="file-input" type="file" accept="image/*" multiple class="hidden" />
                   </label>
-                  <p class="mt-4 text-xs" style="color: var(--color-paragraph); opacity: 0.7;">支持 JPEG/PNG/GIF/WebP/SVG · 单文件 ≤ 10MB</p>
+                  <p class="mt-4 text-xs" style="color: var(--color-paragraph); opacity: 0.7;">支持 JPEG/PNG/GIF/WebP/SVG · 单文件 ≤ 50MB</p>
+                </div>
+
+                <div id="upload-preview" class="hidden mt-8 card rounded-2xl p-6 animate-in">
+                  <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-lg font-bold" style="color: var(--color-headline);">📋 待上传文件 (<span id="preview-count">0</span>)</h4>
+                    <button id="preview-close" class="text-2xl hover:opacity-70 transition-opacity" style="color: var(--color-paragraph);">×</button>
+                  </div>
+                  <div id="preview-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 max-h-96 overflow-y-auto"></div>
+                  <div class="flex gap-3 justify-end">
+                    <button id="preview-cancel" class="px-6 py-3 btn-secondary rounded-xl font-semibold">取消</button>
+                    <button id="preview-confirm" class="px-6 py-3 btn-primary rounded-xl font-semibold">🚀 开始上传</button>
+                  </div>
                 </div>
 
                 <div id="upload-progress" class="hidden mt-8">
@@ -469,6 +481,7 @@
         history: [],
         filteredHistory: [],
         selected: new Set(),
+        pendingFiles: [],
       };
 
       const dom = {};
@@ -485,6 +498,12 @@
         dom.logout = $('logout-btn');
         dom.dropZone = $('drop-zone');
         dom.fileInput = $('file-input');
+        dom.uploadPreview = $('upload-preview');
+        dom.previewList = $('preview-list');
+        dom.previewCount = $('preview-count');
+        dom.previewClose = $('preview-close');
+        dom.previewCancel = $('preview-cancel');
+        dom.previewConfirm = $('preview-confirm');
         dom.uploadProgress = $('upload-progress');
         dom.progressBar = $('progress-bar');
         dom.progressText = $('progress-text');
@@ -595,8 +614,76 @@
         }
       }
 
-      async function handleUpload(files) {
+      function handleFileSelect(files) {
         if (!files || files.length === 0) return;
+        
+        // 转换为数组并过滤图片文件
+        const fileArray = Array.from(files).filter(file => {
+          return file.type.startsWith('image/');
+        });
+
+        if (fileArray.length === 0) {
+          showToast('⚠️ 请选择图片文件');
+          return;
+        }
+
+        state.pendingFiles = fileArray;
+        showUploadPreview();
+      }
+
+      function showUploadPreview() {
+        if (state.pendingFiles.length === 0) return;
+
+        dom.previewCount.textContent = state.pendingFiles.length;
+        dom.previewList.innerHTML = '';
+
+        state.pendingFiles.forEach((file, index) => {
+          const card = document.createElement('div');
+          card.className = 'relative file-card rounded-xl overflow-hidden';
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            card.innerHTML = `
+              <div class="file-thumbnail h-32 flex items-center justify-center overflow-hidden">
+                <img src="${e.target.result}" alt="${file.name}" class="w-full h-full object-cover" />
+              </div>
+              <div class="p-3">
+                <p class="text-xs font-semibold truncate" style="color: var(--color-headline);">${file.name}</p>
+                <p class="text-xs mt-1" style="color: var(--color-paragraph); opacity: 0.7;">${(file.size / 1024).toFixed(2)} KB</p>
+              </div>
+              <button class="remove-preview absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white font-bold" style="background: rgba(255, 107, 157, 0.9);" data-index="${index}">×</button>
+            `;
+
+            const removeBtn = card.querySelector('.remove-preview');
+            removeBtn.addEventListener('click', () => {
+              state.pendingFiles.splice(index, 1);
+              if (state.pendingFiles.length === 0) {
+                cancelPreview();
+              } else {
+                showUploadPreview();
+              }
+            });
+          };
+          reader.readAsDataURL(file);
+          
+          dom.previewList.appendChild(card);
+        });
+
+        dom.uploadPreview.classList.remove('hidden');
+        dom.uploadResult.classList.add('hidden');
+      }
+
+      function cancelPreview() {
+        state.pendingFiles = [];
+        dom.uploadPreview.classList.add('hidden');
+        dom.fileInput.value = '';
+      }
+
+      async function confirmUpload() {
+        if (state.pendingFiles.length === 0) return;
+
+        const files = state.pendingFiles;
+        cancelPreview();
 
         dom.uploadProgress.classList.remove('hidden');
         dom.progressBar.style.width = '0%';
@@ -611,7 +698,7 @@
           }
 
           try {
-            dom.progressText.textContent = `处理中 ${index + 1}/${files.length}`;
+            dom.progressText.textContent = `上传中 ${index + 1}/${files.length}`;
             const res = await apiFetch('/api/upload', {
               method: 'POST',
               body: formData,
@@ -624,14 +711,50 @@
 
             dom.progressBar.style.width = `${Math.round(((index + 1) / files.length) * 100)}%`;
             dom.progressText.textContent = `${Math.round(((index + 1) / files.length) * 100)}%`;
-            showUploadResult(data.data || data);
-            await loadFiles(state.currentPath);
+            
+            // 只显示最后一个上传结果
+            if (index === files.length - 1) {
+              showUploadResult(data.data || data);
+            }
           } catch (err) {
             showToast('❌ ' + (err.message || '上传失败'));
           }
         }
 
-        setTimeout(() => dom.uploadProgress.classList.add('hidden'), 500);
+        setTimeout(() => {
+          dom.uploadProgress.classList.add('hidden');
+          if (files.length > 1) {
+            showToast(`✅ 成功上传 ${files.length} 个文件`);
+          }
+        }, 500);
+
+        await loadFiles(state.currentPath);
+      }
+
+      function handlePaste(event) {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        const imageFiles = [];
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              // 生成文件名
+              const timestamp = new Date().getTime();
+              const ext = file.type.split('/')[1] || 'png';
+              const newFile = new File([file], `pasted-${timestamp}.${ext}`, { type: file.type });
+              imageFiles.push(newFile);
+            }
+          }
+        }
+
+        if (imageFiles.length > 0) {
+          event.preventDefault();
+          handleFileSelect(imageFiles);
+          showToast(`📋 已粘贴 ${imageFiles.length} 张图片`);
+        }
       }
 
       function showUploadResult(info) {
@@ -937,19 +1060,42 @@
           showLogin();
         });
 
-        dom.fileInput.addEventListener('change', (event) => handleUpload(event.target.files));
+        // 文件选择 - 只显示预览，不立即上传
+        dom.fileInput.addEventListener('change', (event) => handleFileSelect(event.target.files));
 
-        dom.dropZone.addEventListener('click', () => dom.fileInput.click());
+        // 拖拽上传
         dom.dropZone.addEventListener('dragover', (event) => {
           event.preventDefault();
           dom.dropZone.classList.add('dropzone-active');
         });
-        dom.dropZone.addEventListener('dragleave', () => dom.dropZone.classList.remove('dropzone-active'));
+        dom.dropZone.addEventListener('dragleave', () => {
+          dom.dropZone.classList.remove('dropzone-active');
+        });
         dom.dropZone.addEventListener('drop', (event) => {
           event.preventDefault();
           dom.dropZone.classList.remove('dropzone-active');
-          handleUpload(event.dataTransfer.files);
+          handleFileSelect(event.dataTransfer.files);
         });
+
+        // 粘贴上传 - 全局监听
+        document.addEventListener('paste', (event) => {
+          // 只在登录后的上传页面启用
+          if (!state.token) return;
+          if (dom.appSection.classList.contains('hidden')) return;
+          
+          // 如果焦点在输入框上，不拦截
+          const activeElement = document.activeElement;
+          if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+            if (activeElement.type !== 'file') return;
+          }
+          
+          handlePaste(event);
+        });
+
+        // 预览相关按钮
+        dom.previewClose.addEventListener('click', cancelPreview);
+        dom.previewCancel.addEventListener('click', cancelPreview);
+        dom.previewConfirm.addEventListener('click', confirmUpload);
 
         dom.resultClose.addEventListener('click', () => dom.uploadResult.classList.add('hidden'));
 
