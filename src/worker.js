@@ -1,3 +1,4 @@
+import manifestJSON from '__STATIC_CONTENT_MANIFEST';
 import { handleAuth } from './handlers/auth.js';
 import { handleUpload } from './handlers/upload.js';
 import {
@@ -26,6 +27,31 @@ const ROUTES = new Map([
   ['DELETE /api/folders', { handler: handleDeleteFolder, auth: true }],
 ]);
 
+const MIME_TYPES = {
+  html: 'text/html; charset=utf-8',
+  js: 'application/javascript; charset=utf-8',
+  mjs: 'application/javascript; charset=utf-8',
+  css: 'text/css; charset=utf-8',
+  json: 'application/json; charset=utf-8',
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  ico: 'image/x-icon',
+  txt: 'text/plain; charset=utf-8',
+};
+
+const assetManifest = (() => {
+  try {
+    return manifestJSON ? JSON.parse(manifestJSON) : {};
+  } catch (err) {
+    console.warn('Failed to parse static asset manifest', err);
+    return {};
+  }
+})();
+
 function withCors(response) {
   const headers = new Headers(response.headers);
   Object.entries(CORS_HEADERS).forEach(([key, value]) => headers.set(key, value));
@@ -37,7 +63,38 @@ function withCors(response) {
   });
 }
 
+function normalizeBindings(env) {
+  const normalized = { ...env };
+
+  if (!normalized.KV) {
+    normalized.KV =
+      env.KV ||
+      env.INDEXES_KV ||
+      env.IndexesKV ||
+      env.indexesKV ||
+      env.indexes_kv ||
+      env.SESSIONS_KV;
+  }
+
+  if (!normalized.R2_BUCKET) {
+    normalized.R2_BUCKET =
+      env.R2_BUCKET ||
+      env.R2 ||
+      env.BUCKET ||
+      env.bucket ||
+      env.bucketBinding ||
+      env.BucketBinding ||
+      env['bucket-binding'];
+  }
+
+  return normalized;
+}
+
 async function enforceRateLimit(request, env) {
+  if (!env.KV) {
+    return null;
+  }
+
   const ip =
     request.headers.get('cf-connecting-ip') ||
     request.headers.get('x-forwarded-for') ||
@@ -117,7 +174,8 @@ async function dispatch(request, env, ctx) {
   }
 
   try {
-    const response = await route.handler(request, env, ctx);
+    const normalizedEnv = normalizeBindings(env);
+    const response = await route.handler(request, normalizedEnv, ctx);
     return withCors(response instanceof Response ? response : successRaw(response));
   } catch (err) {
     console.error('Unhandled error:', err);
@@ -125,9 +183,62 @@ async function dispatch(request, env, ctx) {
   }
 }
 
+async function serveStaticAsset(request, env) {
+  if (env.ASSETS && typeof env.ASSETS.fetch === 'function') {
+    return env.ASSETS.fetch(request);
+  }
+
+  if (!env.__STATIC_CONTENT) {
+    return null;
+  }
+
+  const url = new URL(request.url);
+  let pathname = url.pathname.replace(/^\/+/, '');
+
+  if (!pathname) {
+    pathname = 'index.html';
+  }
+
+  const manifestKey =
+    assetManifest[pathname] ||
+    assetManifest[`${pathname}/index.html`] ||
+    assetManifest['index.html'];
+
+  if (!manifestKey) {
+    return null;
+  }
+
+  const object = await env.__STATIC_CONTENT.get(manifestKey, {
+    type: 'arrayBuffer',
+  });
+
+  if (!object) {
+    return null;
+  }
+
+  const extension = pathname.split('.').pop().toLowerCase();
+  const contentType = MIME_TYPES[extension] || 'application/octet-stream';
+
+  return new Response(object, {
+    headers: {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
-    return dispatch(request, env, ctx);
+    const response = await dispatch(request, normalizeBindings(env), ctx);
+
+    if (response.status === 404 && request.method === 'GET') {
+      const staticResponse = await serveStaticAsset(request, env);
+      if (staticResponse) {
+        return withCors(staticResponse);
+      }
+    }
+
+    return response;
   },
 };
 
