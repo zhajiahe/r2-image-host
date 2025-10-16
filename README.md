@@ -5,31 +5,11 @@
 ## 功能
 
 - 单密码登录，KV 存储 session
-- 图片上传（JPEG/PNG/GIF/WebP/SVG）、类型/魔数/大小校验
+- 图片上传（JPEG/PNG/GIF/WebP/SVG）、类型/大小校验
 - R2 对象自动按日期或自定义路径命名与缓存配置
 - 文件列表、搜索、批量删除、文件夹 CRUD
 - 控制台展示统计信息
 - 可选公共域名直链输出
-
-## 目录结构
-
-```
-src/
-  worker.js            # Worker 入口与路由
-  handlers/
-    auth.js            # 认证逻辑
-    upload.js          # 上传处理
-    files.js           # 文件列表/删除/统计
-    folders.js         # 文件夹操作
-  utils/
-    response.js        # 统一响应封装
-    validator.js       # 校验、命名工具
-  static/
-    index.html         # 控制台页面
-wrangler.toml          # Wrangler 配置
-package.json
-README.md
-```
 
 ## 本地开发
 

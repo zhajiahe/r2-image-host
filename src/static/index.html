@@ -1,88 +1,3 @@
-      async function loadHistory({ skipLoading = false } = {}) {
-        if (!skipLoading) {
-          dom.historyTable.innerHTML = `
-            <tr>
-              <td colspan="6" class="px-4 py-6 text-center text-slate-500">加载中...</td>
-            </tr>
-          `;
-        }
-
-        const res = await apiFetch('/api/history?limit=200');
-        if (!res) return;
-        const payload = await res.json();
-        if (!res.ok) {
-          showToast(payload.error || '加载历史失败');
-          return;
-        }
-        const data = payload.data || payload;
-        state.history = data.files || [];
-        state.filteredHistory = state.history;
-        renderHistory();
-      }
-
-      function renderHistory() {
-        const search = dom.historySearch.value.trim().toLowerCase();
-        state.filteredHistory = state.history.filter((file) => {
-          if (!search) return true;
-          return (
-            file.name?.toLowerCase().includes(search) ||
-            file.key?.toLowerCase().includes(search) ||
-            file.uploaded?.toLowerCase().includes(search)
-          );
-        });
-
-        dom.historyMeta.textContent = `${state.filteredHistory.length} 条记录`;
-
-        dom.historyTable.innerHTML = '';
-
-        if (state.filteredHistory.length === 0) {
-          const emptyRow = document.createElement('tr');
-          emptyRow.innerHTML = `
-            <td colspan="6" class="px-4 py-6 text-center text-slate-500">暂无记录</td>
-          `;
-          dom.historyTable.appendChild(emptyRow);
-          return;
-        }
-
-        state.filteredHistory.forEach((file) => {
-          const row = document.createElement('tr');
-          row.className = 'hover:bg-slate-800/40 transition';
-
-          const uploaded = (() => {
-            if (!file.uploaded) return '-';
-            try {
-              return new Date(file.uploaded).toLocaleString();
-            } catch (err) {
-              return file.uploaded;
-            }
-          })();
-
-          row.innerHTML = `
-            <td class="px-4 py-3 text-slate-200">${file.name || '-'}</td>
-            <td class="px-4 py-3 text-slate-400 text-xs">${file.key}</td>
-            <td class="px-4 py-3 text-slate-400">${uploaded}</td>
-            <td class="px-4 py-3 text-slate-400">${file.type || '-'}</td>
-            <td class="px-4 py-3 text-slate-400">${(file.size / 1024).toFixed(2)} KB</td>
-            <td class="px-4 py-3 text-right">
-              ${
-                file.url
-                  ? `<button data-url="${file.url}" class="history-copy px-3 py-2 rounded-lg bg-slate-700 text-xs">复制直链</button>`
-                  : `<span class="text-slate-500 text-xs">未配置直链</span>`
-              }
-            </td>
-          `;
-
-          row.querySelectorAll('.history-copy').forEach((btn) => {
-            btn.addEventListener('click', async () => {
-              await navigator.clipboard.writeText(btn.dataset.url);
-              showToast('直链已复制');
-            });
-          });
-
-          dom.historyTable.appendChild(row);
-        });
-      }
-
 <!DOCTYPE html>
 <html lang="zh-CN">
   <head>
@@ -217,7 +132,7 @@
                 </div>
                 <div class="overflow-auto border border-slate-800 rounded-xl max-h-[480px]">
                   <table class="min-w-full text-left text-sm">
-                    <thead class="bg-slate-800/60 text-slate-400 text-xs uppercase tracking-wider">
+                    <thead class="bg-slate-800/60 text-slate-400 text-xs uppercase tracking-wider sticky top-0">
                       <tr>
                         <th class="px-4 py-3">文件名</th>
                         <th class="px-4 py-3">存储路径</th>
@@ -229,7 +144,7 @@
                     </thead>
                     <tbody id="history-table" class="divide-y divide-slate-800">
                       <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">暂无记录</td>
+                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">加载中...</td>
                       </tr>
                     </tbody>
                   </table>
@@ -315,7 +230,6 @@
         dom.foldersContainer = $('folders-container');
         dom.filesMeta = $('files-meta');
         dom.searchInput = $('search-input');
-        dom.historyView = $('history-view');
         dom.historyTable = $('history-table');
         dom.historyMeta = $('history-meta');
         dom.historySearch = $('history-search');
@@ -501,6 +415,77 @@
         dom.statsRecent.textContent = data.recentUploads?.[0]?.key || '暂无';
       }
 
+      async function loadHistory() {
+        const res = await apiFetch('/api/history?limit=500');
+        if (!res) return;
+        const payload = await res.json();
+        if (!res.ok) {
+          showToast(payload.error || '加载历史失败');
+          return;
+        }
+        const data = payload.data || payload;
+        state.history = data.files || [];
+        state.filteredHistory = state.history;
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const search = dom.historySearch.value.trim().toLowerCase();
+        state.filteredHistory = state.history.filter((file) => {
+          if (!search) return true;
+          return (
+            file.name?.toLowerCase().includes(search) ||
+            file.key?.toLowerCase().includes(search) ||
+            file.uploaded?.toLowerCase().includes(search)
+          );
+        });
+
+        dom.historyMeta.textContent = `${state.filteredHistory.length} 条记录`;
+        dom.historyTable.innerHTML = '';
+
+        if (state.filteredHistory.length === 0) {
+          const emptyRow = document.createElement('tr');
+          emptyRow.innerHTML = `
+            <td colspan="6" class="px-4 py-6 text-center text-slate-500">暂无记录</td>
+          `;
+          dom.historyTable.appendChild(emptyRow);
+          return;
+        }
+
+        state.filteredHistory.forEach((file) => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-slate-800/40 transition';
+
+          const uploaded = file.uploaded
+            ? new Date(file.uploaded).toLocaleString()
+            : '-';
+
+          row.innerHTML = `
+            <td class="px-4 py-3 text-slate-200">${file.name || '-'}</td>
+            <td class="px-4 py-3 text-slate-400 text-xs">${file.key}</td>
+            <td class="px-4 py-3 text-slate-400">${uploaded}</td>
+            <td class="px-4 py-3 text-slate-400">${file.type || '-'}</td>
+            <td class="px-4 py-3 text-slate-400">${(file.size / 1024).toFixed(2)} KB</td>
+            <td class="px-4 py-3 text-right">
+              ${
+                file.url
+                  ? `<button data-url="${file.url}" class="history-copy px-3 py-2 rounded-lg bg-slate-700 text-xs hover:bg-slate-600">复制直链</button>`
+                  : `<span class="text-slate-500 text-xs">未配置直链</span>`
+              }
+            </td>
+          `;
+
+          row.querySelectorAll('.history-copy').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              await navigator.clipboard.writeText(btn.dataset.url);
+              showToast('直链已复制');
+            });
+          });
+
+          dom.historyTable.appendChild(row);
+        });
+      }
+
       function renderBreadcrumb() {
         const segments = state.currentPath ? state.currentPath.split('/').filter(Boolean) : [];
         const parts = ['<span class="cursor-pointer hover:text-sky-400" data-prefix="">根目录</span>'];
@@ -662,11 +647,11 @@
             if (btn.dataset.section === 'files') {
               loadFiles(state.currentPath);
             }
+            if (btn.dataset.section === 'history') {
+              loadHistory();
+            }
             if (btn.dataset.section === 'settings') {
               loadStats();
-            }
-            if (btn.dataset.section === 'history') {
-              loadHistory({ skipLoading: true });
             }
           });
         });
@@ -704,7 +689,7 @@
         $('btn-refresh').addEventListener('click', () => loadFiles(state.currentPath));
         dom.searchInput.addEventListener('input', renderFiles);
         dom.historySearch.addEventListener('input', renderHistory);
-        $('btn-history-refresh').addEventListener('click', () => loadHistory());
+        $('btn-history-refresh').addEventListener('click', loadHistory);
       }
 
       async function bootstrap() {
