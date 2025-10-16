@@ -1,5 +1,13 @@
-      async function loadHistory() {
-        const res = await apiFetch('/api/history?limit=500');
+      async function loadHistory({ skipLoading = false } = {}) {
+        if (!skipLoading) {
+          dom.historyTable.innerHTML = `
+            <tr>
+              <td colspan="6" class="px-4 py-6 text-center text-slate-500">加载中...</td>
+            </tr>
+          `;
+        }
+
+        const res = await apiFetch('/api/history?limit=200');
         if (!res) return;
         const payload = await res.json();
         if (!res.ok) {
@@ -40,9 +48,14 @@
           const row = document.createElement('tr');
           row.className = 'hover:bg-slate-800/40 transition';
 
-          const uploaded = file.uploaded
-            ? new Date(file.uploaded).toLocaleString()
-            : '-';
+          const uploaded = (() => {
+            if (!file.uploaded) return '-';
+            try {
+              return new Date(file.uploaded).toLocaleString();
+            } catch (err) {
+              return file.uploaded;
+            }
+          })();
 
           row.innerHTML = `
             <td class="px-4 py-3 text-slate-200">${file.name || '-'}</td>
@@ -653,7 +666,7 @@
               loadStats();
             }
             if (btn.dataset.section === 'history') {
-              loadHistory();
+              loadHistory({ skipLoading: true });
             }
           });
         });
@@ -691,7 +704,7 @@
         $('btn-refresh').addEventListener('click', () => loadFiles(state.currentPath));
         dom.searchInput.addEventListener('input', renderFiles);
         dom.historySearch.addEventListener('input', renderHistory);
-        $('btn-history-refresh').addEventListener('click', loadHistory);
+        $('btn-history-refresh').addEventListener('click', () => loadHistory());
       }
 
       async function bootstrap() {
