@@ -1,3 +1,75 @@
+      async function loadHistory() {
+        const res = await apiFetch('/api/history?limit=500');
+        if (!res) return;
+        const payload = await res.json();
+        if (!res.ok) {
+          showToast(payload.error || '加载历史失败');
+          return;
+        }
+        const data = payload.data || payload;
+        state.history = data.files || [];
+        state.filteredHistory = state.history;
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const search = dom.historySearch.value.trim().toLowerCase();
+        state.filteredHistory = state.history.filter((file) => {
+          if (!search) return true;
+          return (
+            file.name?.toLowerCase().includes(search) ||
+            file.key?.toLowerCase().includes(search) ||
+            file.uploaded?.toLowerCase().includes(search)
+          );
+        });
+
+        dom.historyMeta.textContent = `${state.filteredHistory.length} 条记录`;
+
+        dom.historyTable.innerHTML = '';
+
+        if (state.filteredHistory.length === 0) {
+          const emptyRow = document.createElement('tr');
+          emptyRow.innerHTML = `
+            <td colspan="6" class="px-4 py-6 text-center text-slate-500">暂无记录</td>
+          `;
+          dom.historyTable.appendChild(emptyRow);
+          return;
+        }
+
+        state.filteredHistory.forEach((file) => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-slate-800/40 transition';
+
+          const uploaded = file.uploaded
+            ? new Date(file.uploaded).toLocaleString()
+            : '-';
+
+          row.innerHTML = `
+            <td class="px-4 py-3 text-slate-200">${file.name || '-'}</td>
+            <td class="px-4 py-3 text-slate-400 text-xs">${file.key}</td>
+            <td class="px-4 py-3 text-slate-400">${uploaded}</td>
+            <td class="px-4 py-3 text-slate-400">${file.type || '-'}</td>
+            <td class="px-4 py-3 text-slate-400">${(file.size / 1024).toFixed(2)} KB</td>
+            <td class="px-4 py-3 text-right">
+              ${
+                file.url
+                  ? `<button data-url="${file.url}" class="history-copy px-3 py-2 rounded-lg bg-slate-700 text-xs">复制直链</button>`
+                  : `<span class="text-slate-500 text-xs">未配置直链</span>`
+              }
+            </td>
+          `;
+
+          row.querySelectorAll('.history-copy').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              await navigator.clipboard.writeText(btn.dataset.url);
+              showToast('直链已复制');
+            });
+          });
+
+          dom.historyTable.appendChild(row);
+        });
+      }
+
 <!DOCTYPE html>
 <html lang="zh-CN">
   <head>
@@ -30,6 +102,7 @@
           <nav class="flex items-center gap-2" id="main-nav" hidden>
             <button data-section="upload" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">上传</button>
             <button data-section="files" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">文件管理</button>
+            <button data-section="history" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">历史直链</button>
             <button data-section="settings" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800">设置</button>
           </nav>
           <button id="logout-btn" class="hidden text-sm text-slate-400 hover:text-red-400">退出</button>
@@ -119,6 +192,38 @@
               </div>
             </div>
 
+            <div id="history-view" class="app-view hidden">
+              <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6 space-y-6">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-slate-100">历史上传直链</h3>
+                  <button id="btn-history-refresh" class="px-3 py-2 rounded-lg bg-slate-800 text-sm hover:bg-slate-700">刷新</button>
+                </div>
+                <div class="flex items-center gap-3">
+                  <input id="history-search" type="search" placeholder="搜索文件" class="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+                  <span class="text-xs text-slate-500" id="history-meta"></span>
+                </div>
+                <div class="overflow-auto border border-slate-800 rounded-xl max-h-[480px]">
+                  <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-800/60 text-slate-400 text-xs uppercase tracking-wider">
+                      <tr>
+                        <th class="px-4 py-3">文件名</th>
+                        <th class="px-4 py-3">存储路径</th>
+                        <th class="px-4 py-3">上传时间</th>
+                        <th class="px-4 py-3">类型</th>
+                        <th class="px-4 py-3">大小</th>
+                        <th class="px-4 py-3 text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="history-table" class="divide-y divide-slate-800">
+                      <tr>
+                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">暂无记录</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
             <div id="settings-view" class="app-view hidden">
               <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-6 space-y-6">
                 <div>
@@ -163,6 +268,8 @@
         files: [],
         folders: [],
         filteredFiles: [],
+        history: [],
+        filteredHistory: [],
         selected: new Set(),
       };
 
@@ -195,6 +302,10 @@
         dom.foldersContainer = $('folders-container');
         dom.filesMeta = $('files-meta');
         dom.searchInput = $('search-input');
+        dom.historyView = $('history-view');
+        dom.historyTable = $('history-table');
+        dom.historyMeta = $('history-meta');
+        dom.historySearch = $('history-search');
         dom.statsTotalFiles = $('stats-total-files');
         dom.statsTotalSize = $('stats-total-size');
         dom.statsRecent = $('stats-recent');
@@ -342,7 +453,9 @@
       }
 
       async function loadFiles(prefix = '') {
-        const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : '';
+        const normalized = prefix ? prefix.replace(/\/+$/, '') : '';
+        const finalPrefix = normalized ? `${normalized}/` : '';
+        const query = finalPrefix ? `?prefix=${encodeURIComponent(finalPrefix)}` : '';
         const res = await apiFetch(`/api/files${query}`);
         if (!res) return;
         const payload = await res.json();
@@ -351,7 +464,7 @@
           return;
         }
         const data = payload.data || payload;
-        state.currentPath = prefix;
+        state.currentPath = finalPrefix;
         state.files = data.files || [];
         state.folders = data.folders || [];
         state.filteredFiles = state.files;
@@ -539,6 +652,9 @@
             if (btn.dataset.section === 'settings') {
               loadStats();
             }
+            if (btn.dataset.section === 'history') {
+              loadHistory();
+            }
           });
         });
 
@@ -574,6 +690,8 @@
         $('btn-delete-selected').addEventListener('click', deleteSelected);
         $('btn-refresh').addEventListener('click', () => loadFiles(state.currentPath));
         dom.searchInput.addEventListener('input', renderFiles);
+        dom.historySearch.addEventListener('input', renderHistory);
+        $('btn-history-refresh').addEventListener('click', loadHistory);
       }
 
       async function bootstrap() {
@@ -581,7 +699,7 @@
         setupEventListeners();
         if (state.token) {
           showApp();
-          await Promise.all([loadFiles(), loadStats()]);
+          await Promise.all([loadFiles(), loadStats(), loadHistory()]);
         }
       }
 

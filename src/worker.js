@@ -5,6 +5,7 @@ import {
   handleListFiles,
   handleDeleteFiles,
   handleStats,
+  handleHistory,
 } from './handlers/files.js';
 import { handleCreateFolder, handleDeleteFolder } from './handlers/folders.js';
 import { successRaw, error, notFound, methodNotAllowed } from './utils/response.js';
@@ -21,6 +22,7 @@ const ROUTES = new Map([
   ['POST /api/auth', { handler: handleAuth }],
   ['POST /api/upload', { handler: handleUpload, auth: true }],
   ['GET /api/files', { handler: handleListFiles, auth: true }],
+  ['GET /api/history', { handler: handleHistory, auth: true }],
   ['DELETE /api/files', { handler: handleDeleteFiles, auth: true }],
   ['GET /api/stats', { handler: handleStats, auth: true }],
   ['POST /api/folders', { handler: handleCreateFolder, auth: true }],

@@ -5,7 +5,9 @@ const DEFAULT_LIST_LIMIT = 100;
 
 function parseListParams(url) {
   const params = new URLSearchParams(url.search);
-  const prefix = sanitizePath(params.get('prefix') || '');
+  const rawPrefix = params.get('prefix') || '';
+  const sanitizedPrefix = sanitizePath(rawPrefix);
+  const prefix = sanitizedPrefix && rawPrefix.endsWith('/') ? `${sanitizedPrefix}/` : sanitizedPrefix;
   const limit = Math.min(parseInt(params.get('limit') || DEFAULT_LIST_LIMIT, 10), 1000);
   const cursor = params.get('cursor') || undefined;
   return { prefix, limit, cursor };
@@ -36,6 +38,69 @@ export async function handleListFiles(request, env) {
     folders: list.delimitedPrefixes || [],
     truncated: list.truncated,
     cursor: list.cursor || null,
+  });
+}
+
+function parseHistoryParams(url) {
+  const params = new URLSearchParams(url.search);
+  const rawPrefix = params.get('prefix') || '';
+  const sanitizedPrefix = sanitizePath(rawPrefix);
+  const prefix = sanitizedPrefix && rawPrefix.endsWith('/') ? `${sanitizedPrefix}/` : sanitizedPrefix;
+  const limit = Math.min(parseInt(params.get('limit') || 200, 10), 1000);
+  return { prefix, limit };
+}
+
+const HISTORY_SCAN_LIMIT = 2000;
+
+function formatHistoryObject(obj, env) {
+  const uploadedIso = obj.uploaded?.toISOString?.() || obj.customMetadata?.uploadTime || null;
+  const url = env.R2_PUBLIC_DOMAIN
+    ? `${env.R2_PUBLIC_DOMAIN.replace(/\/$/, '')}/${obj.key}`
+    : null;
+
+  return {
+    key: obj.key,
+    name: obj.key.split('/').pop(),
+    size: obj.size,
+    uploaded: uploadedIso,
+    url,
+    type: obj.httpMetadata?.contentType || null,
+  };
+}
+
+export async function handleHistory(request, env) {
+  if (request.method !== 'GET') {
+    return error('Method not allowed', 405);
+  }
+
+  const { prefix, limit } = parseHistoryParams(new URL(request.url));
+
+  let cursor;
+  const collected = [];
+
+  do {
+    const list = await env.R2_BUCKET.list({ prefix, cursor, limit: Math.min(1000, limit) });
+    collected.push(...list.objects.map((obj) => formatHistoryObject(obj, env)));
+    cursor = list.truncated ? list.cursor : null;
+
+    if (!cursor || collected.length >= HISTORY_SCAN_LIMIT) {
+      break;
+    }
+  } while (cursor);
+
+  const sorted = collected.sort((a, b) => {
+    const aTime = a.uploaded ? Date.parse(a.uploaded) : 0;
+    const bTime = b.uploaded ? Date.parse(b.uploaded) : 0;
+    return bTime - aTime;
+  });
+
+  const files = sorted.slice(0, limit);
+  const hasMore = collected.length > limit || Boolean(cursor);
+
+  return success({
+    files,
+    total: collected.length,
+    hasMore,
   });
 }
 
