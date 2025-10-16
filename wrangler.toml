@@ -3,18 +3,19 @@ main = "src/worker.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-R2_PUBLIC_DOMAIN = "https://img.example.com"
+R2_PUBLIC_DOMAIN = "https://image.20250530.space"
 
+# KV 命名空间绑定
 [[kv_namespaces]]
-binding = "KV"
-id = "<your-kv-namespace-id>"
+binding = "INDEXES_KV"
+id = "bcb414d8957047c6afce7434145285f5"
+preview_id = "bcb414d8957047c6afce7434145285f5"
 
+# R2 存储桶绑定
 [[r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "<your-r2-bucket-name>"
+binding = "bucket-binding"
+bucket_name = "image-sharer"
 
-[build.upload]
-format = "modules"
 
 [site]
 bucket = "src/static"
