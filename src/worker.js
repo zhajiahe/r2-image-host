@@ -151,9 +151,17 @@ async function dispatch(request, env, ctx) {
 
   if (!route) {
     if (request.method === 'GET') {
-      return env.ASSETS
-        ? env.ASSETS.fetch(request)
-        : notFound('Not found');
+      if (env.ASSETS && typeof env.ASSETS.fetch === 'function') {
+        const assetResponse = await env.ASSETS.fetch(request);
+        if (assetResponse && assetResponse.status !== 404) {
+          return assetResponse;
+        }
+      }
+
+      const staticResponse = await serveStaticAsset(request, env);
+      if (staticResponse) {
+        return staticResponse;
+      }
     }
     return withCors(notFound('Not found'));
   }
@@ -231,16 +239,7 @@ async function serveStaticAsset(request, env) {
 
 export default {
   async fetch(request, env, ctx) {
-    const response = await dispatch(request, normalizeBindings(env), ctx);
-
-    if (response.status === 404 && request.method === 'GET') {
-      const staticResponse = await serveStaticAsset(request, env);
-      if (staticResponse) {
-        return withCors(staticResponse);
-      }
-    }
-
-    return response;
+    return dispatch(request, normalizeBindings(env), ctx);
   },
 };
 
